@@ -321,6 +321,7 @@ public:
             return (isUnityPlugin ? Project::addUnityPluginPrefixIfNecessary (targetNameValue.get().toString())
                                   : targetNameValue.get().toString());
         }
+        bool isTargetAsDynamicLibraryEnabled() const           { return targetAsDynamicLibrary.get(); }
 
         int getOptimisationLevelInt() const                    { return optimisationLevelValue.get(); }
         String getGCCOptimisationFlag() const;
@@ -402,7 +403,7 @@ public:
         const ProjectExporter& exporter;
 
     protected:
-        ValueTreePropertyWithDefault isDebugValue, configNameValue, targetNameValue, targetBinaryPathValue, recommendedWarningsValue, optimisationLevelValue,
+        ValueTreePropertyWithDefault isDebugValue, configNameValue, targetNameValue, targetAsDynamicLibrary, targetBinaryPathValue, recommendedWarningsValue, optimisationLevelValue,
                                      linkTimeOptimisationValue, ppDefinesValue, headerSearchPathValue, librarySearchPathValue, userNotesValue,
                                      usePrecompiledHeaderFileValue, precompiledHeaderFileValue, configCompilerFlagsValue, configLinkerFlagsValue;
 

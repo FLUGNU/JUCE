@@ -912,6 +912,7 @@ ProjectExporter::BuildConfiguration::BuildConfiguration (Project& p, const Value
      isDebugValue                  (config, Ids::isDebug,                  getUndoManager(), getValue (Ids::isDebug)),
      configNameValue               (config, Ids::name,                     getUndoManager(), "Build Configuration"),
      targetNameValue               (config, Ids::targetName,               getUndoManager(), project.getProjectFilenameRootString()),
+     targetAsDynamicLibrary        (config, Ids::targetAsDynamicLibrary,   getUndoManager()),
      targetBinaryPathValue         (config, Ids::binaryPath,               getUndoManager()),
      recommendedWarningsValue      (config, Ids::recommendedWarnings,      getUndoManager()),
      optimisationLevelValue        (config, Ids::optimisation,             getUndoManager()),
@@ -1030,6 +1031,8 @@ void ProjectExporter::BuildConfiguration::createPropertyEditors (PropertyListBui
     props.add (new TextPropertyComponent (targetNameValue, "Binary Name", 256, false),
                "The filename to use for the destination binary executable file. If you don't add a suffix to this name, "
                "a suitable platform-specific suffix will be added automatically.");
+    props.add (new ChoicePropertyComponent (targetAsDynamicLibrary, "Target as Dynamic Library"),
+               "Enable this to build a dynamic library instead of a executable.");
 
     props.add (new TextPropertyComponent (targetBinaryPathValue, "Binary Location", 1024, false),
                "The folder in which the finished binary should be placed. Leave this blank to cause the binary to be placed "

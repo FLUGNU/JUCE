@@ -238,7 +238,6 @@ public:
                                   build_tools::ProjectType::Target::Type type) const
         {
             using Target = build_tools::ProjectType::Target::Type;
-
             if (type == Target::LV2Helper)
                 return Project::getLV2FileWriterName() + suffix;
 
@@ -483,7 +482,8 @@ public:
                 auto* e = projectXml.createNewChildElement ("PropertyGroup");
                 setConditionAttribute (*e, config);
                 e->setAttribute ("Label", "Configuration");
-                e->createNewChildElement ("ConfigurationType")->addTextElement (getProjectType());
+                e->createNewChildElement ("ConfigurationType")->addTextElement
+                (config.isTargetAsDynamicLibraryEnabled()? "DynamicLibrary" : getProjectType());
                 e->createNewChildElement ("UseOfMfc")->addTextElement ("false");
                 e->createNewChildElement ("WholeProgramOptimization")->addTextElement (config.isLinkTimeOptimisationEnabled() ? "true"
                                                                                                                               : "false");
@@ -862,7 +862,6 @@ public:
 
             if (targetFileType == executable)     return "Application";
             if (targetFileType == staticLibrary)  return "StaticLibrary";
-
             return "DynamicLibrary";
         }
 
@@ -1179,7 +1178,7 @@ public:
         String getTargetSuffix() const
         {
             auto fileType = getTargetFileType();
-
+            
             if (fileType == executable)          return ".exe";
             if (fileType == staticLibrary)       return ".lib";
             if (fileType == sharedLibraryOrDLL)  return ".dll";
@@ -1427,7 +1426,8 @@ public:
 
         String getBinaryNameWithSuffix (const MSVCBuildConfiguration& config) const
         {
-            return config.getOutputFilename (getTargetSuffix(), true, type);
+            return config.getOutputFilename (
+                config.isTargetAsDynamicLibraryEnabled() ? ".dll" : getTargetSuffix(), true, type);
         }
 
         String getOutputFilePath (const MSVCBuildConfiguration& config) const

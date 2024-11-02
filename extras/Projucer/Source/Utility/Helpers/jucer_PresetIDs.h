@@ -96,6 +96,7 @@ namespace Ids
     DECLARE_ID (isDebug);
     DECLARE_ID (alwaysGenerateDebugSymbols);
     DECLARE_ID (targetName);
+    DECLARE_ID (targetAsDynamicLibrary);
     DECLARE_ID (binaryPath);
     DECLARE_ID (recommendedWarnings);
     DECLARE_ID (optimisation);
