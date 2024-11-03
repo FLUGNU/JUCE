@@ -67,3 +67,5 @@ extras/Projucer/JUCECompileEngine.dylib
 CMakeUserPresets.json
 .editorconfig
 
+#FLUGNU Specific needs :
+!/extras/Projucer/Builds/VisualStudio2022/x64/Release/App/Projucer.exe
