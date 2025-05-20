@@ -134,7 +134,6 @@
 
  #include <juce_audio_basics/midi/juce_MidiDataConcatenator.h>
  #include "native/juce_Midi_windows.cpp"
-
  #if JUCE_ASIO
   /* This is very frustrating - we only need to use a handful of definitions from
      a couple of the header files in Steinberg's ASIO SDK, and it'd be easy to copy
