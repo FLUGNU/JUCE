@@ -300,6 +300,16 @@ inline Type getIvar (id self, const char* name)
     return static_cast<Type> (v);
 }
 
+/*  JUCE_KEEP_OBJC_CLASSES_AT_SHUTDOWN: when JUCE is embedded in another application (as a library or
+    a plug-in), objects of these classes can still be alive when the static destructors run at exit,
+    e.g. in the autorelease pool of a host thread that ends after exit() started. Disposing their class
+    then crashes the host when they are released. Set it to 1 to keep the classes (they die with the
+    process).
+*/
+#ifndef JUCE_KEEP_OBJC_CLASSES_AT_SHUTDOWN
+ #define JUCE_KEEP_OBJC_CLASSES_AT_SHUTDOWN 0
+#endif
+
 template <typename SuperclassType>
 struct ObjCClass
 {
@@ -312,10 +322,12 @@ struct ObjCClass
 
     virtual ~ObjCClass()
     {
+       #if ! JUCE_KEEP_OBJC_CLASSES_AT_SHUTDOWN
         auto kvoSubclassName = String ("NSKVONotifying_") + class_getName (cls);
 
         if (objc_getClass (kvoSubclassName.toUTF8()) == nullptr)
             objc_disposeClassPair (cls);
+       #endif
     }
 
     void registerClass()
