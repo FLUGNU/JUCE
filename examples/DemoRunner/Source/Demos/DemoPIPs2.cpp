@@ -46,10 +46,13 @@
 #include "../../../GUI/DialogsDemo.h"
 #include "../../../GUI/FlexBoxDemo.h"
 #include "../../../GUI/FontsDemo.h"
+#include "../../../GUI/FontFeaturesDemo.h"
+#include "../../../GUI/FontVariablesDemo.h"
 #include "../../../GUI/GraphicsDemo.h"
 #include "../../../GUI/GridDemo.h"
 #include "../../../GUI/ImagesDemo.h"
 #include "../../../GUI/KeyMappingsDemo.h"
+#include "../../../GUI/LineSpacingDemo.h"
 #include "../../../GUI/LookAndFeelDemo.h"
 #include "../../../GUI/MDIDemo.h"
 #include "../../../GUI/MenusDemo.h"
@@ -66,6 +69,7 @@
 #include "../../../GUI/WebBrowserDemo.h"
 #include "../../../GUI/WidgetsDemo.h"
 #include "../../../GUI/WindowsDemo.h"
+#include "../../../GUI/ComponentDiagnosticsDemo.h"
 
 void registerDemos_Two() noexcept
 {
@@ -83,14 +87,18 @@ void registerDemos_Two() noexcept
     REGISTER_DEMO (CodeEditorDemo,            GUI, false)
    #endif
     REGISTER_DEMO (ComponentDemo,             GUI, false)
+    REGISTER_DEMO (ComponentDiagnosticsDemo,  GUI, false)
     REGISTER_DEMO (ComponentTransformsDemo,   GUI, false)
     REGISTER_DEMO (DialogsDemo,               GUI, false)
     REGISTER_DEMO (FlexBoxDemo,               GUI, false)
     REGISTER_DEMO (FontsDemo,                 GUI, false)
+    REGISTER_DEMO (FontFeaturesDemo,          GUI, false)
+    REGISTER_DEMO (FontVariablesDemo,         GUI, false)
     REGISTER_DEMO (GraphicsDemo,              GUI, false)
     REGISTER_DEMO (GridDemo,                  GUI, false)
     REGISTER_DEMO (ImagesDemo,                GUI, false)
     REGISTER_DEMO (KeyMappingsDemo,           GUI, false)
+    REGISTER_DEMO (LineSpacingDemo,           GUI, false)
     REGISTER_DEMO (LookAndFeelDemo,           GUI, false)
     REGISTER_DEMO (MDIDemo,                   GUI, false)
     REGISTER_DEMO (MenusDemo,                 GUI, false)

@@ -16,7 +16,7 @@
    framework to you, and you must discontinue the installation or download
    process and cease use of the JUCE framework.
 
-   JUCE End User Licence Agreement: https://juce.com/legal/juce-8-licence/
+   JUCE End User Licence Agreement: https://juce.com/legal/juce-9-licence/
    JUCE Privacy Policy: https://juce.com/juce-privacy-policy
    JUCE Website Terms of Service: https://juce.com/juce-website-terms-of-service/
 
@@ -80,8 +80,23 @@ public:
 
     /** Calls Animator::update() for all registered Animators that are still alive. References to
         deleted Animators are removed.
+
+        Uses Time::getMillisecondCounterHiRes() to calculate the necessary timestamp. Consider using
+        a VBlankAnimatorUpdater instead for using timestamps that are synchronised across all
+        VBlankAnimatorUpdater instances.
     */
     void update();
+
+    /** Calls Animator::update() for all registered Animators that are still alive. References to
+        deleted Animators are removed.
+
+        The supplied timestamp should be monotonically increasing for correct behaviour. Ideally
+        this should be a timestamp supplied by a VBlankAttachment. Consider using the
+        VBlankAnimatorUpdater class, which takes care of supplying the right timestamp.
+
+        @see VBlankAnimatorUpdater
+    */
+    void update (double timestampMs);
 
 private:
     struct JUCE_API  Entry

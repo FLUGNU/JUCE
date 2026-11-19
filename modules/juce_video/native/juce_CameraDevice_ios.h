@@ -16,7 +16,7 @@
    framework to you, and you must discontinue the installation or download
    process and cease use of the JUCE framework.
 
-   JUCE End User Licence Agreement: https://juce.com/legal/juce-8-licence/
+   JUCE End User Licence Agreement: https://juce.com/legal/juce-9-licence/
    JUCE Privacy Policy: https://juce.com/juce-privacy-policy
    JUCE Website Terms of Service: https://juce.com/juce-website-terms-of-service/
 
@@ -34,6 +34,55 @@
 
 struct CameraDevice::Pimpl
 {
+    static void applyDeviceOrientation (AVCaptureDevice*, AVCaptureVideoPreviewLayer*, AVCaptureConnection* outputConnection)
+    {
+        JUCE_BEGIN_IGNORE_WARNINGS_GCC_LIKE ("-Wdeprecated-declarations")
+        const auto statusBarOrientation = [UIApplication sharedApplication].statusBarOrientation;
+        const auto videoOrientation = statusBarOrientation != UIInterfaceOrientationUnknown
+                                    ? (AVCaptureVideoOrientation) statusBarOrientation
+                                    : AVCaptureVideoOrientationPortrait;
+        outputConnection.videoOrientation = videoOrientation;
+        JUCE_END_IGNORE_WARNINGS_GCC_LIKE
+    }
+
+    struct PreviewLayerAngleTrait
+    {
+       #if JUCE_IOS_API_VERSION_CAN_BE_BUILT (17, 0)
+        API_AVAILABLE (ios (17))
+        static void newFn (AVCaptureDevice* device, AVCaptureVideoPreviewLayer* previewLayer, AVCaptureConnection* outputConnection)
+        {
+            const NSUniquePtr<AVCaptureDeviceRotationCoordinator> coordinator
+            {
+                [[AVCaptureDeviceRotationCoordinator alloc] initWithDevice: device
+                                                              previewLayer: previewLayer]
+            };
+
+            outputConnection.videoRotationAngle = coordinator.get().videoRotationAngleForHorizonLevelPreview;
+        }
+       #endif
+
+        static constexpr auto oldFn = applyDeviceOrientation;
+    };
+
+    struct CaptureLayerAngleTrait
+    {
+       #if JUCE_IOS_API_VERSION_CAN_BE_BUILT (17, 0)
+        API_AVAILABLE (ios (17))
+        static void newFn (AVCaptureDevice* device, AVCaptureVideoPreviewLayer* previewLayer, AVCaptureConnection* outputConnection)
+        {
+            const NSUniquePtr<AVCaptureDeviceRotationCoordinator> coordinator
+            {
+                [[AVCaptureDeviceRotationCoordinator alloc] initWithDevice: device
+                                                              previewLayer: previewLayer]
+            };
+
+            outputConnection.videoRotationAngle = coordinator.get().videoRotationAngleForHorizonLevelCapture;
+        }
+       #endif
+
+        static constexpr auto oldFn = applyDeviceOrientation;
+    };
+
     using InternalOpenCameraResultCallback = std::function<void (const String& /*cameraId*/, const String& /*error*/)>;
 
     Pimpl (CameraDevice& ownerToUse, const String& cameraIdToUse, int /*index*/,
@@ -423,6 +472,9 @@ private:
             }
 
             previewLayer = [AVCaptureVideoPreviewLayer layerWithSession: captureSession.get()];
+
+            updatePreviewOrientation();
+
             return previewLayer;
         }
 
@@ -435,7 +487,7 @@ private:
                 return;
             }
 
-            stillPictureTaker.takePicture (previewLayer.connection.videoOrientation);
+            stillPictureTaker.takePicture();
         }
 
         void startRecording (const File& file)
@@ -455,7 +507,7 @@ private:
                 return;
             }
 
-            videoRecorder.startRecording (file, previewLayer.connection.videoOrientation);
+            videoRecorder.startRecording (file);
         }
 
         void stopRecording()
@@ -466,6 +518,21 @@ private:
         Time getTimeOfFirstRecordedFrame() const
         {
             return videoRecorder.getTimeOfFirstRecordedFrame();
+        }
+
+        AVCaptureDevice* getDevice() const
+        {
+            return cameraDevice;
+        }
+
+        AVCaptureVideoPreviewLayer* getPreviewLayer() const
+        {
+            return previewLayer;
+        }
+
+        void updatePreviewOrientation()
+        {
+            ifelse_17_0<PreviewLayerAngleTrait> (cameraDevice, previewLayer, previewLayer.connection);
         }
 
         JUCE_DECLARE_WEAK_REFERENCEABLE (CaptureSession)
@@ -493,7 +560,8 @@ private:
         //==============================================================================
         struct SessionDelegateClass    : public ObjCClass<NSObject>
         {
-            SessionDelegateClass()  : ObjCClass<NSObject> ("SessionDelegateClass_")
+            SessionDelegateClass()
+                : ObjCClass ("SessionDelegateClass_")
             {
                 JUCE_BEGIN_IGNORE_WARNINGS_GCC_LIKE ("-Wundeclared-selector")
                 addMethod (@selector (sessionDidStartRunning:),
@@ -554,7 +622,7 @@ private:
         class StillPictureTaker
         {
         public:
-            StillPictureTaker (CaptureSession& cs)
+            explicit StillPictureTaker (CaptureSession& cs)
                 : captureSession (cs),
                   captureOutput (createCaptureOutput()),
                   photoOutputDelegate (nullptr)
@@ -566,7 +634,7 @@ private:
                 captureSession.addOutputIfPossible (captureOutput);
             }
 
-            void takePicture (AVCaptureVideoOrientation orientationToUse)
+            void takePicture()
             {
                 if (takingPicture)
                 {
@@ -579,11 +647,12 @@ private:
 
                 printImageOutputDebugInfo (captureOutput);
 
-                if (auto* connection = findVideoConnection (captureOutput))
+                if (findVideoConnection (captureOutput) != nullptr)
                 {
                     auto* photoOutput = (AVCapturePhotoOutput*) captureOutput;
                     auto outputConnection = [photoOutput connectionWithMediaType: AVMediaTypeVideo];
-                    outputConnection.videoOrientation = orientationToUse;
+
+                    ifelse_17_0<CaptureLayerAngleTrait> (captureSession.cameraDevice, captureSession.previewLayer, outputConnection);
 
                     [photoOutput capturePhotoWithSettings: [AVCapturePhotoSettings photoSettings]
                                                  delegate: id<AVCapturePhotoCaptureDelegate> (photoOutputDelegate.get())];
@@ -661,7 +730,8 @@ private:
             class PhotoOutputDelegateClass : public ObjCClass<NSObject>
             {
             public:
-                PhotoOutputDelegateClass() : ObjCClass<NSObject> ("PhotoOutputDelegateClass_")
+                PhotoOutputDelegateClass()
+                    : ObjCClass ("PhotoOutputDelegateClass_")
                 {
                     addMethod (@selector (captureOutput:willBeginCaptureForResolvedSettings:),
                                [] (id, SEL, AVCapturePhotoOutput*, AVCaptureResolvedPhotoSettings*)
@@ -844,8 +914,9 @@ private:
         class VideoRecorder
         {
         public:
-            VideoRecorder (CaptureSession& session)
-                : movieFileOutput ([AVCaptureMovieFileOutput new]),
+            explicit VideoRecorder (CaptureSession& session)
+                : captureSession (session),
+                  movieFileOutput ([AVCaptureMovieFileOutput new]),
                   delegate (nullptr)
             {
                 static FileOutputRecordingDelegateClass cls;
@@ -864,7 +935,7 @@ private:
                 jassert (! recordingInProgress);
             }
 
-            void startRecording (const File& file, AVCaptureVideoOrientation orientationToUse)
+            void startRecording (const File& file)
             {
                 printVideoOutputDebugInfo (movieFileOutput);
 
@@ -872,7 +943,7 @@ private:
                                       isDirectory: NO];
 
                 auto outputConnection = [movieFileOutput connectionWithMediaType: AVMediaTypeVideo];
-                outputConnection.videoOrientation = orientationToUse;
+                ifelse_17_0<CaptureLayerAngleTrait> (captureSession.cameraDevice, captureSession.previewLayer, outputConnection);
 
                 [movieFileOutput startRecordingToOutputFileURL: url recordingDelegate: delegate.get()];
             }
@@ -908,7 +979,8 @@ private:
             //==============================================================================
             struct FileOutputRecordingDelegateClass    : public ObjCClass<NSObject<AVCaptureFileOutputRecordingDelegate>>
             {
-                FileOutputRecordingDelegateClass()  : ObjCClass<NSObject<AVCaptureFileOutputRecordingDelegate>> ("FileOutputRecordingDelegateClass_")
+                FileOutputRecordingDelegateClass()
+                    : ObjCClass ("FileOutputRecordingDelegateClass_")
                 {
                     addMethod (@selector (captureOutput:didStartRecordingToOutputFileAtURL:fromConnections:),
                                [] (id self, SEL, AVCaptureFileOutput*, NSURL*, NSArray<AVCaptureConnection*>*)
@@ -951,6 +1023,7 @@ private:
                 static void setOwner (id self, VideoRecorder* r) { object_setInstanceVariable (self, "owner", r); }
             };
 
+            CaptureSession& captureSession;
             AVCaptureMovieFileOutput* movieFileOutput;
             std::unique_ptr<NSObject<AVCaptureFileOutputRecordingDelegate>, NSObjectDeleter> delegate;
             bool recordingInProgress = false;
@@ -1086,7 +1159,8 @@ struct CameraDevice::ViewerComponent  : public UIViewComponent
     //==============================================================================
     struct JuceCameraDeviceViewerClass    : public ObjCClass<UIView>
     {
-        JuceCameraDeviceViewerClass()  : ObjCClass<UIView> ("JuceCameraDeviceViewerClass_")
+        JuceCameraDeviceViewerClass()
+            : ObjCClass ("JuceCameraDeviceViewerClass_")
         {
             addMethod (@selector (layoutSubviews),
                        [] (id self, SEL)
@@ -1099,6 +1173,20 @@ struct CameraDevice::ViewerComponent  : public UIViewComponent
 
                            if (auto* previewLayer = getPreviewLayer (self))
                                previewLayer.frame = asUIView.bounds;
+                       });
+
+            addMethod (@selector (observeValueForKeyPath:ofObject:change:context:),
+                       [] (id self, SEL, NSString* keyPath, id, NSDictionary*, void* context)
+                       {
+                           if ([keyPath isEqualToString: @"videoRotationAngleForHorizonLevelPreview"])
+                           {
+                               if (getPreviewLayer (self) != nullptr)
+                               {
+                                   auto* viewer = static_cast<ViewerComponent*> (context);
+                                   auto& session = viewer->cameraDevice.pimpl->captureSession;
+                                   session.updatePreviewOrientation();
+                               }
+                           }
                        });
 
             registerClass();
@@ -1118,6 +1206,9 @@ struct CameraDevice::ViewerComponent  : public UIViewComponent
 
         static void updateOrientation (id self)
         {
+            if (@available (iOS 17, *))
+                return;
+
             if (auto* previewLayer = getPreviewLayer (self))
             {
                 UIDeviceOrientation o = [UIDevice currentDevice].orientation;
@@ -1125,13 +1216,52 @@ struct CameraDevice::ViewerComponent  : public UIViewComponent
                 if (UIDeviceOrientationIsPortrait (o) || UIDeviceOrientationIsLandscape (o))
                 {
                     if (previewLayer.connection != nil)
+                    {
+                        JUCE_BEGIN_IGNORE_WARNINGS_GCC_LIKE ("-Wdeprecated-declarations")
                         previewLayer.connection.videoOrientation = (AVCaptureVideoOrientation) o;
+                        JUCE_END_IGNORE_WARNINGS_GCC_LIKE
+                    }
                 }
             }
         }
     };
 
-    ViewerComponent (CameraDevice& device)
+    struct AddObserverTrait
+    {
+       #if JUCE_IOS_API_VERSION_CAN_BE_BUILT (17, 0)
+        API_AVAILABLE (ios (17))
+        static void newFn (ViewerComponent* self)
+        {
+            auto& session = self->cameraDevice.pimpl->captureSession;
+            self->coordinator.reset ([[AVCaptureDeviceRotationCoordinator alloc] initWithDevice: session.getDevice()
+                                                                                   previewLayer: session.getPreviewLayer()]);
+            [self->coordinator.get() addObserver: static_cast<UIView*> (self->getView())
+                                      forKeyPath: @"videoRotationAngleForHorizonLevelPreview"
+                                         options: NSKeyValueObservingOptionNew
+                                         context: self];
+        }
+       #endif
+
+        static void oldFn (ViewerComponent*) {}
+    };
+
+    struct RemoveObserverTrait
+    {
+        API_AVAILABLE (ios (17))
+        static void newFn (ViewerComponent* self)
+        {
+            if (self->coordinator != nullptr)
+            {
+                [self->coordinator.get() removeObserver: static_cast<UIView*> (self->getView())
+                                             forKeyPath: @"videoRotationAngleForHorizonLevelPreview"];
+            }
+        }
+
+        static void oldFn (ViewerComponent*) {}
+    };
+
+    explicit ViewerComponent (CameraDevice& device)
+        : cameraDevice (device)
     {
         static JuceCameraDeviceViewerClass cls;
 
@@ -1144,15 +1274,19 @@ struct CameraDevice::ViewerComponent  : public UIViewComponent
         auto* previewLayer = device.pimpl->captureSession.createPreviewLayer();
         previewLayer.frame = view.bounds;
 
-        UIInterfaceOrientation statusBarOrientation = [UIApplication sharedApplication].statusBarOrientation;
-        AVCaptureVideoOrientation videoOrientation = statusBarOrientation != UIInterfaceOrientationUnknown
-                                                   ? (AVCaptureVideoOrientation) statusBarOrientation
-                                                   : AVCaptureVideoOrientationPortrait;
-
-        previewLayer.connection.videoOrientation = videoOrientation;
-
         [view.layer addSublayer: previewLayer];
+
+        ifelse_17_0<AddObserverTrait> (this);
     }
+
+    ~ViewerComponent() override
+    {
+        ifelse_17_0<RemoveObserverTrait> (this);
+    }
+
+    CameraDevice& cameraDevice;
+
+    NSUniquePtr<NSObject> coordinator;
 };
 
 //==============================================================================

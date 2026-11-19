@@ -16,7 +16,7 @@
    framework to you, and you must discontinue the installation or download
    process and cease use of the JUCE framework.
 
-   JUCE End User Licence Agreement: https://juce.com/legal/juce-8-licence/
+   JUCE End User Licence Agreement: https://juce.com/legal/juce-9-licence/
    JUCE Privacy Policy: https://juce.com/juce-privacy-policy
    JUCE Website Terms of Service: https://juce.com/juce-website-terms-of-service/
 
@@ -254,7 +254,8 @@ ValueTree PIPGenerator::createExporterChild (const Identifier& exporterIdentifie
     exporter.setProperty (Ids::targetFolder, "Builds/" + ProjectExporter::getTypeInfoForExporter (exporterIdentifier).targetFolder, nullptr);
 
     const Identifier vsExporters[] { MSVCProjectExporterVC2019::getValueTreeTypeName(),
-                                     MSVCProjectExporterVC2022::getValueTreeTypeName() };
+                                     MSVCProjectExporterVC2022::getValueTreeTypeName(),
+                                     MSVCProjectExporterVC2026::getValueTreeTypeName() };
 
     if (isJUCEExample (pipFile) && std::find (std::begin (vsExporters), std::end (vsExporters), exporterIdentifier) != std::end (vsExporters))
     {
@@ -507,7 +508,7 @@ Array<File> PIPGenerator::replaceRelativeIncludesAndGetFilesToMove()
             if (path.startsWith ("<") && path.endsWith (">"))
                 continue;
 
-            auto file = pipFile.getParentDirectory().getChildFile (path);
+            auto file = pipFile.getSiblingFile (path);
             files.add (file);
 
             line = line.replace (path, file.getFileName());

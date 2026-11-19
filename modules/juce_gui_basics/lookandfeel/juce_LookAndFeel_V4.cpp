@@ -16,7 +16,7 @@
    framework to you, and you must discontinue the installation or download
    process and cease use of the JUCE framework.
 
-   JUCE End User Licence Agreement: https://juce.com/legal/juce-8-licence/
+   JUCE End User Licence Agreement: https://juce.com/legal/juce-9-licence/
    JUCE Privacy Policy: https://juce.com/juce-privacy-policy
    JUCE Website Terms of Service: https://juce.com/juce-website-terms-of-service/
 
@@ -390,15 +390,10 @@ void LookAndFeel_V4::changeToggleButtonWidthToFitText (ToggleButton& button)
 }
 
 //==============================================================================
-AlertWindow* LookAndFeel_V4::createAlertWindow (const String& title, const String& message,
-                                                const String& button1, const String& button2, const String& button3,
-                                                MessageBoxIconType iconType,
-                                                int numButtons, Component* associatedComponent)
+std::unique_ptr<AlertWindow> LookAndFeel_V4::createAlertWindowForOptions (const MessageBoxOptions& opt)
 {
     auto boundsOffset = 50;
-
-    auto* aw = LookAndFeel_V2::createAlertWindow (title, message, button1, button2, button3,
-                                                  iconType, numButtons, associatedComponent);
+    auto aw = LookAndFeel_V2::createAlertWindowForOptions (opt);
 
     auto bounds = aw->getBounds();
     bounds = bounds.withSizeKeepingCentre (bounds.getWidth() + boundsOffset, bounds.getHeight() + boundsOffset);
@@ -536,7 +531,7 @@ void LookAndFeel_V4::drawLinearProgressBar (Graphics& g, const ProgressBar& prog
     }
     else
     {
-        // spinning bar..
+        // spinning bar
         g.setColour (background);
 
         auto stripeWidth = height * 2;
@@ -550,7 +545,7 @@ void LookAndFeel_V4::drawLinearProgressBar (Graphics& g, const ProgressBar& prog
                                 x, static_cast<float> (height),
                                 x - (float) stripeWidth * 0.5f, static_cast<float> (height));
 
-        Image im (Image::ARGB, width, height, true);
+        Image im (Image::ARGB, width, height, true, *g.getInternalContext().getPreferredImageTypeForTemporaryImages());
 
         {
             Graphics g2 (im);
@@ -1311,7 +1306,9 @@ void LookAndFeel_V4::drawCallOutBoxBackground (CallOutBox& box, Graphics& g,
 {
     if (cachedImage.isNull())
     {
-        cachedImage = { Image::ARGB, box.getWidth(), box.getHeight(), true };
+        cachedImage = { Image::ARGB, box.getWidth(), box.getHeight(), true, *g.getInternalContext().getPreferredImageTypeForTemporaryImages() };
+        cachedImage.setBackupEnabled (false);
+
         Graphics g2 (cachedImage);
 
         DropShadow (Colours::black.withAlpha (0.7f), 8, { 0, 2 }).drawForPath (g2, path);

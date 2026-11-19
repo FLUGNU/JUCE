@@ -16,7 +16,7 @@
    framework to you, and you must discontinue the installation or download
    process and cease use of the JUCE framework.
 
-   JUCE End User Licence Agreement: https://juce.com/legal/juce-8-licence/
+   JUCE End User Licence Agreement: https://juce.com/legal/juce-9-licence/
    JUCE Privacy Policy: https://juce.com/juce-privacy-policy
    JUCE Website Terms of Service: https://juce.com/juce-website-terms-of-service/
 
@@ -310,13 +310,13 @@ Result ProjectSaver::saveProject (ProjectExporter* specifiedExporterToSave)
         writeProjects (modules, specifiedExporterToSave);
         writeProjectFile();
 
-        runPostExportScript();
-
         if (generatedCodeFolder.exists())
         {
             writeReadmeFile();
             deleteUnwantedFilesIn (generatedCodeFolder);
         }
+
+        runPostExportScript();
 
         if (errors.isEmpty())
             return Result::ok();
@@ -432,6 +432,13 @@ void ProjectSaver::writeAppConfig (MemoryOutputStream& out, const OwnedArray<Lib
                 << newLine
                 << "#endif"
                 << newLine;
+            }
+
+            if (const auto webviewInteropVersion = module->getWebviewInteropLibraryVersion();
+                webviewInteropVersion.isNotEmpty())
+            {
+                out << newLine << "#define JUCE_WEBVIEW_INTEROP_LIBRARY_VERSION "
+                    << webviewInteropVersion.quoted() << newLine;
             }
         }
     }

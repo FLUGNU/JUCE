@@ -16,7 +16,7 @@
    framework to you, and you must discontinue the installation or download
    process and cease use of the JUCE framework.
 
-   JUCE End User Licence Agreement: https://juce.com/legal/juce-8-licence/
+   JUCE End User Licence Agreement: https://juce.com/legal/juce-9-licence/
    JUCE Privacy Policy: https://juce.com/juce-privacy-policy
    JUCE Website Terms of Service: https://juce.com/juce-website-terms-of-service/
 
@@ -63,6 +63,11 @@ void AnimatorUpdater::removeAnimator (const Animator& animator)
 
 void AnimatorUpdater::update()
 {
+    update (Time::getMillisecondCounterHiRes());
+}
+
+void AnimatorUpdater::update (double timestampMs)
+{
     if (reentrancyGuard)
     {
         // If this is hit, one of the animators is trying to update itself
@@ -73,8 +78,6 @@ void AnimatorUpdater::update()
     }
 
     const ScopedValueSetter setter { reentrancyGuard, true };
-
-    const auto timestampMs = Time::getMillisecondCounterHiRes();
 
     for (currentIterator = animators.begin(); currentIterator != animators.end();)
     {
